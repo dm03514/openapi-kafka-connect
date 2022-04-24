@@ -16,6 +16,7 @@ paths:
           $ref: '#/components/responses/ServerErrorResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
+
   /connectors:
     # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors
     get:
@@ -92,43 +93,14 @@ paths:
         - $ref: '#/components/parameters/ConnectorNameParameter'
       responses:
         '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    description: Name of the connector.
-                  connector:
-                    type: object
-                    description: Connector status.
-                    properties:
-                      state:
-                        type: string
-                        description: State of the connector.
-                      worker_id:
-                        type: string
-                        description: ID of the worker running the connector.
-                  tasks:
-                    type: array
-                    description: List of task status for the connector.
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: number
-                          description: ID of the task.
-                        state:
-                          type: string
-                          description: Current state of the task.
-                        worker_id:
-                          type: string
-                          description: ID of the worker running the task.
-                        trace:
-                          type: string
-                          description: Stack trace information if the task has failed.
+          $ref: '#/components/responses/ConnectorStatusResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
   /connectors/{name}/restart:
     # https://docs.confluent.io/platform/current/connect/references/restapi.html#post--connectors-(string-name)-restart
     post:
@@ -142,13 +114,9 @@ paths:
         '200':
           $ref: '#/components/responses/OKResponse'
         '202':
-          description: Accepted
-          content:
-            application/json:
-              schema:
-                type: object
+          $ref: '#/components/responses/RestartConnectorResponse'
         '204':
-          $ref: '#/components/responses/NotContentResponse'
+          $ref: '#/components/responses/NoContentResponse'
         '404':
           $ref: '#/components/responses/NotFoundResponse'
         '409':
@@ -167,11 +135,7 @@ paths:
         - $ref: '#/components/parameters/ConnectorNameParameter'
       responses:
         '202':
-          description: Accepted
-          content:
-            application/json:
-              schema:
-                type: object
+          $ref: '#/components/responses/AcceptedResponse'
         '409':
           $ref: '#/components/responses/ConflictResponse'
         '500':
@@ -188,11 +152,62 @@ paths:
         - $ref: '#/components/parameters/ConnectorNameParameter'
       responses:
         '202':
-          description: Accepted
-          content:
-            application/json:
-              schema:
-                type: object
+          $ref: '#/components/responses/AcceptedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/tasks:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-tasks
+    get:
+      operationId: getConnectorTasks
+      summary: Get a list of tasks currently running for the connector.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetConnectorTasksResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/tasks/{task_id}/status:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-tasks-(int-taskid)-status
+    get:
+      operationId: getConnectorTaskStatus
+      summary: Get a task's status.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+        - $ref: '#/components/parameters/TaskIDParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetConnectorTaskStatusResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/tasks/{task_id}/restart:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#post--connectors-(string-name)-tasks-(int-taskid)-restart
+    post:
+      operationId: restartConnectorTask
+      summary: Restart an individual task.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+        - $ref: '#/components/parameters/TaskIDParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/OKResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
         '500':
           $ref: '#/components/responses/ServerErrorResponse'
         '503':
@@ -206,6 +221,13 @@ components:
       required: true
       schema:
         type: string
+    TaskIDParameter:
+      name: task_id
+      description: ID of the task.
+      in: path
+      required: true
+      schema:
+        type: integer
     ExpandParameter:
       name: expand
       description: Retrieves additional state/configuration information for each of the connectors returned in the API call.
@@ -263,10 +285,36 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ListConnectorsResponse'
+    GetConnectorStatusResponse:
+      description: Connector status fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetConnectorStatusResponse'
+    RestartConnectorResponse:
+      description: Connector restarted successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RestartConnectorResponse'
+    GetConnectorTasksResponse:
+      description: Connector tasks fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetConnectorTasksResponse'
+    GetConnectorTaskStatusResponse:
+      description: Connector task status fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetConnectorTaskStatusResponse'
     OKResponse:
       description: OK.
     CreatedResponse:
       description: Created
+    AcceptedResponse:
+      description: Accepted
     NoContentResponse:
       description: No Content
     ForbiddenResponse:
@@ -331,7 +379,7 @@ components:
       description: Generic error.
       properties:
         error_code:
-          type: number
+          type: integer
           description: Error code.
         message:
           type: string
@@ -378,6 +426,7 @@ components:
       additionalProperties: true
     GetConnectorResponse:
       type: object
+      description: Connector info.
       properties:
         name:
           $ref: '#/components/schemas/ConnectorName'
@@ -395,6 +444,7 @@ components:
                 $ref: '#/components/schemas/TaskID'
     GetConnectorStatusResponse:
       type: object
+      description: Connector status.
       properties:
         name:
           $ref: '#/components/schemas/ConnectorName'
@@ -420,6 +470,62 @@ components:
                 $ref: '#/components/schemas/State'
               worker_id:
                 $ref: '#/components/schemas/WorkerID'
+    RestartConnectorResponse:
+      type: object
+      description: Connector restarted.
+      properties:
+        name:
+          $ref: '#/components/schemas/ConnectorName'
+        connector:
+          type: object
+          description: Connector status.
+          properties:
+            state:
+              $ref: '#/components/schemas/State'
+            worker_id:
+              $ref: '#/components/schemas/WorkerID'
+        tasks:
+          type: array
+          description: List of task status for the connector.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/TaskID'
+              trace:
+                $ref: '#/components/schemas/TaskTrace'
+              state:
+                $ref: '#/components/schemas/State'
+              worker_id:
+                $ref: '#/components/schemas/WorkerID'
+    GetConnectorTasksResponse:
+      type: object
+      description: Connector tasks fetched.
+      properties:
+        tasks:
+          type: array
+          description: List of tasks for the connector.
+          items:
+            type: object
+            properties:
+              id:
+                type: object
+                description: Task ID.
+                properties:
+                  task:
+                    $ref: '#/components/schemas/TaskID'
+                  connector:
+                    $ref: '#/components/schemas/ConnectorName'
+              config:
+                $ref: '#/components/schemas/Config'
+    GetConnectorTaskStatusResponse:
+      type: object
+      description: Task status.
+      properties:
+        state:
+          $ref: '#/components/schemas/State'
+        worker_id:
+          $ref: '#/components/schemas/WorkerID'
     Config:
       type: object
       description: Configuration of a connector/task/worker. All keys/values should be strings.
@@ -427,7 +533,7 @@ components:
       type: string
       description: Name of the connector.
     TaskID:
-      type: number
+      type: integer
       description: ID of the task.
     TaskTrace:
       type: string

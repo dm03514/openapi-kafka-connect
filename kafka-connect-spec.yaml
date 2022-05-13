@@ -93,7 +93,7 @@ paths:
         - $ref: '#/components/parameters/ConnectorNameParameter'
       responses:
         '200':
-          $ref: '#/components/responses/ConnectorStatusResponse'
+          $ref: '#/components/responses/GetConnectorStatusResponse'
         '409':
           $ref: '#/components/responses/ConflictResponse'
         '500':
@@ -112,7 +112,7 @@ paths:
         - $ref: '#/components/parameters/OnlyFailedParameter'
       responses:
         '200':
-          $ref: '#/components/responses/OKResponse'
+          $ref: '#/components/responses/RestartConnectorResponse'
         '202':
           $ref: '#/components/responses/RestartConnectorResponse'
         '204':
@@ -160,16 +160,35 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
 
+  /connectors/{name}/topics:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-topics
+    get:
+      operationId: listConnectorTopics
+      summary: |
+        Returns a list of connector topic names. There is no defined order in which the topics are returned and consecutive calls may return the same topic names but in different order.
+        This request is independent of whether a connector is running, and will return an empty set of topics, both for connectors that don't have active topics as well as non-existent connectors.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListConnectorTopicsResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
   /connectors/{name}/tasks:
     # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-tasks
     get:
-      operationId: getConnectorTasks
+      operationId: listConnectorTasks
       summary: Get a list of tasks currently running for the connector.
       parameters:
         - $ref: '#/components/parameters/ConnectorNameParameter'
       responses:
         '200':
-          $ref: '#/components/responses/GetConnectorTasksResponse'
+          $ref: '#/components/responses/ListConnectorTasksResponse'
         '409':
           $ref: '#/components/responses/ConflictResponse'
         '500':
@@ -297,12 +316,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/RestartConnectorResponse'
-    GetConnectorTasksResponse:
+    ListConnectorTopicsResponse:
+      description: Connector topics fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListConnectorTopicsResponse'
+    ListConnectorTasksResponse:
       description: Connector tasks fetched successfully.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/GetConnectorTasksResponse'
+            $ref: '#/components/schemas/ListConnectorTasksResponse'
     GetConnectorTaskStatusResponse:
       description: Connector task status fetched successfully.
       content:
@@ -498,7 +523,11 @@ components:
                 $ref: '#/components/schemas/State'
               worker_id:
                 $ref: '#/components/schemas/WorkerID'
-    GetConnectorTasksResponse:
+    ListConnectorTopicsResponse:
+      type: object
+      description: Connector topics fetched.
+      additionalProperties: true
+    ListConnectorTasksResponse:
       type: object
       description: Connector tasks fetched.
       properties:

@@ -5,19 +5,572 @@ info:
   version: 0.1.9
 paths:
   /:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--
     get:
+      operationId: getClusterInfo
       summary: Top-level (root) request that gets the version of the Connect worker that serves the REST request, the git commit ID of the source code, and the Kafka cluster ID that the worker is connected to.
       responses:
         '200':
-          description: hi
-          content:
-            application/json:
-              schema:
+          $ref: '#/components/responses/GetClusterInfoResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors
+    get:
+      operationId: listConnectors
+      summary: Get a list of active connectors.
+      parameters:
+        - $ref: '#/components/parameters/ExpandParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListConnectorsResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#post--connectors
+    post:
+      operationId: createConnector
+      summary: Create a new connector, returning the current connector info if successful. Return 409 (Conflict) if rebalance is in process, or if the connector already exists.
+      requestBody:
+        $ref: '#/components/requestBodies/CreateConnectorRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateConnectorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)
+    get:
+      operationId: getConnector
+      summary: Get information about the connector.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetConnectorResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#delete--connectors-(string-name)-
+    delete:
+      operationId: deleteConnector
+      summary: Delete a connector, halting all tasks and deleting its configuration.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContentResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/status:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-status
+    get:
+      operationId: getConnectorStatus
+      summary: |
+        Gets the current status of the connector, including:
+        * whether it is running or restarting, or if it has failed or paused
+        * which worker it is assigned to
+        * error information if it has failed
+        * the state of all its tasks
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetConnectorStatusResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/restart:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#post--connectors-(string-name)-restart
+    post:
+      operationId: restartConnector
+      summary: Restart the connector. You may use the following query parameters to restart any combination of the Connector and/or Task instances for the connector.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+        - $ref: '#/components/parameters/IncludeTasksParameter'
+        - $ref: '#/components/parameters/OnlyFailedParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/RestartConnectorResponse'
+        '202':
+          $ref: '#/components/responses/RestartConnectorResponse'
+        '204':
+          $ref: '#/components/responses/NoContentResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/pause:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#put--connectors-(string-name)-pause
+    put:
+      operationId: pauseConnector
+      summary: Pause the connector and its tasks, which stops message processing until the connector is resumed. This call asynchronous and the tasks will not transition to PAUSED state at the same time.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '202':
+          $ref: '#/components/responses/AcceptedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/resume:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#put--connectors-(string-name)-resume
+    put:
+      operationId: resumeConnector
+      summary: Resume a paused connector or do nothing if the connector is not paused. This call asynchronous and the tasks will not transition to RUNNING state at the same time.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '202':
+          $ref: '#/components/responses/AcceptedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/topics:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-topics
+    get:
+      operationId: listConnectorTopics
+      summary: |
+        Returns a list of connector topic names. There is no defined order in which the topics are returned and consecutive calls may return the same topic names but in different order.
+        This request is independent of whether a connector is running, and will return an empty set of topics, both for connectors that don't have active topics as well as non-existent connectors.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListConnectorTopicsResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/tasks:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-tasks
+    get:
+      operationId: listConnectorTasks
+      summary: Get a list of tasks currently running for the connector.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListConnectorTasksResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/tasks/{task_id}/status:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#get--connectors-(string-name)-tasks-(int-taskid)-status
+    get:
+      operationId: getConnectorTaskStatus
+      summary: Get a task's status.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+        - $ref: '#/components/parameters/TaskIDParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetConnectorTaskStatusResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /connectors/{name}/tasks/{task_id}/restart:
+    # https://docs.confluent.io/platform/current/connect/references/restapi.html#post--connectors-(string-name)-tasks-(int-taskid)-restart
+    post:
+      operationId: restartConnectorTask
+      summary: Restart an individual task.
+      parameters:
+        - $ref: '#/components/parameters/ConnectorNameParameter'
+        - $ref: '#/components/parameters/TaskIDParameter'
+      responses:
+        '200':
+          $ref: '#/components/responses/OKResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ServerErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+components:
+  parameters:
+    ConnectorNameParameter:
+      name: name
+      description: Name of the connector.
+      in: path
+      required: true
+      schema:
+        type: string
+    TaskIDParameter:
+      name: task_id
+      description: ID of the task.
+      in: path
+      required: true
+      schema:
+        type: integer
+    ExpandParameter:
+      name: expand
+      description: Retrieves additional state/configuration information for each of the connectors returned in the API call.
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum: ["info", "status"]
+    IncludeTasksParameter:
+      name: includeTasks
+      description: Specifies whether to restart the connector instance and task instances (includeTasks=true) or just the connector instance (includeTasks=false).
+      in: query
+      required: false
+      schema:
+        type: boolean
+    OnlyFailedParameter:
+      name: onlyFailed
+      description: Specifies whether to restart just the instances with a FAILED status (onlyFailed=true) or all instances (onlyFailed=false).
+      in: query
+      schema:
+        type: boolean
+      required: false
+  requestBodies:
+    CreateConnectorRequest:
+      description: New connector request.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateConnectorRequest'
+  responses:
+    GetClusterInfoResponse:
+      description: Cluster info retrieved successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetClusterInfoResponse'
+    CreateConnectorResponse:
+      description: New connector created successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateConnectorResponse'
+    GetConnectorResponse:
+      description: Connector fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetConnectorResponse'
+    ListConnectorsResponse:
+      description: Connectors fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListConnectorsResponse'
+    GetConnectorStatusResponse:
+      description: Connector status fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetConnectorStatusResponse'
+    RestartConnectorResponse:
+      description: Connector restarted successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RestartConnectorResponse'
+    ListConnectorTopicsResponse:
+      description: Connector topics fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListConnectorTopicsResponse'
+    ListConnectorTasksResponse:
+      description: Connector tasks fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListConnectorTasksResponse'
+    GetConnectorTaskStatusResponse:
+      description: Connector task status fetched successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetConnectorTaskStatusResponse'
+    OKResponse:
+      description: OK.
+    CreatedResponse:
+      description: Created
+    AcceptedResponse:
+      description: Accepted
+    NoContentResponse:
+      description: No Content
+    ForbiddenResponse:
+      description: Forbidden
+    ConflictResponse:
+      description: Conflict. Rebalance in progress.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+    NotFoundResponse:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+    UnprocessableEntityResponse:
+      description: Unprocessable Entity.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+    ServerErrorResponse:
+      description: Internal Server Error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+    ServiceUnavailableResponse:
+      description: Service Unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+    UnexpectedErrorResponse:
+      description: Unexpected Error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+  schemas:
+    Error:
+      type: object
+      description: Generic error.
+      properties:
+        error_code:
+          type: integer
+          description: Error code.
+        message:
+          type: string
+          description: Error message.
+    GetClusterInfoResponse:
+      type: object
+      properties:
+        version:
+          type: string
+          description: Connect worker version.
+        commit:
+          type: string
+          description: git commit ID.
+        kafka_cluster_id:
+          type: string
+          description: Kafka cluster ID.
+    CreateConnectorRequest:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/ConnectorName'
+        config:
+          $ref: '#/components/schemas/Config'
+    CreateConnectorResponse:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/ConnectorName'
+        config:
+          $ref: '#/components/schemas/Config'
+        tasks:
+          type: array
+          description: Lits of active tasks generated by the connector.
+          items:
+            type: object
+            properties:
+              connector:
+                $ref: '#/components/schemas/ConnectorName'
+              task:
+                $ref: '#/components/schemas/TaskID'
+    ListConnectorsResponse:
+      type: object
+      description: List of connectors.
+      additionalProperties: true
+    GetConnectorResponse:
+      type: object
+      description: Connector info.
+      properties:
+        name:
+          $ref: '#/components/schemas/ConnectorName'
+        config:
+          $ref: '#/components/schemas/Config'
+        tasks:
+          type: array
+          description: List of active tasks generated by the connector.
+          items:
+            type: object
+            properties:
+              connector:
+                $ref: '#/components/schemas/ConnectorName'
+              task:
+                $ref: '#/components/schemas/TaskID'
+    GetConnectorStatusResponse:
+      type: object
+      description: Connector status.
+      properties:
+        name:
+          $ref: '#/components/schemas/ConnectorName'
+        connector:
+          type: object
+          description: Connector status.
+          properties:
+            state:
+              $ref: '#/components/schemas/State'
+            worker_id:
+              $ref: '#/components/schemas/WorkerID'
+        tasks:
+          type: array
+          description: List of task status for the connector.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/TaskID'
+              trace:
+                $ref: '#/components/schemas/TaskTrace'
+              state:
+                $ref: '#/components/schemas/State'
+              worker_id:
+                $ref: '#/components/schemas/WorkerID'
+    RestartConnectorResponse:
+      type: object
+      description: Connector restarted.
+      properties:
+        name:
+          $ref: '#/components/schemas/ConnectorName'
+        connector:
+          type: object
+          description: Connector status.
+          properties:
+            state:
+              $ref: '#/components/schemas/State'
+            worker_id:
+              $ref: '#/components/schemas/WorkerID'
+        tasks:
+          type: array
+          description: List of task status for the connector.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/TaskID'
+              trace:
+                $ref: '#/components/schemas/TaskTrace'
+              state:
+                $ref: '#/components/schemas/State'
+              worker_id:
+                $ref: '#/components/schemas/WorkerID'
+    ListConnectorTopicsResponse:
+      type: object
+      description: Connector topics fetched.
+      additionalProperties: true
+    ListConnectorTasksResponse:
+      type: object
+      description: Connector tasks fetched.
+      properties:
+        tasks:
+          type: array
+          description: List of tasks for the connector.
+          items:
+            type: object
+            properties:
+              id:
                 type: object
+                description: Task ID.
                 properties:
-                  version:
-                    type: string
-                  commit:
-                    type: string
-                  kafka_cluster_id:
-                    type: string
+                  task:
+                    $ref: '#/components/schemas/TaskID'
+                  connector:
+                    $ref: '#/components/schemas/ConnectorName'
+              config:
+                $ref: '#/components/schemas/Config'
+    GetConnectorTaskStatusResponse:
+      type: object
+      description: Task status.
+      properties:
+        state:
+          $ref: '#/components/schemas/State'
+        worker_id:
+          $ref: '#/components/schemas/WorkerID'
+    Config:
+      type: object
+      description: Configuration of a connector/task/worker. All keys/values should be strings.
+    ConnectorName:
+      type: string
+      description: Name of the connector.
+    TaskID:
+      type: integer
+      description: ID of the task.
+    TaskTrace:
+      type: string
+      description: Stack trace information if the task has failed.
+    State:
+      type: string
+      description: State of a connector/task/worker.
+      enum: ["UNASSIGNED", "RUNNING", "PAUSED", "FAILED", "RESTARTING", "DESTROYED"]
+    WorkerID:
+      type: string
+      description: ID of the worker.

@@ -530,28 +530,12 @@ components:
               type:
                 $ref: '#/components/schemas/ConnectorType'
               connector:
-                type: object
-                description: Connector status.
-                properties:
-                  id:
-                    $ref: '#/components/schemas/WorkerID'
-                  state:
-                    $ref: '#/components/schemas/State'
+                $ref: '#/components/schemas/ConnectorStatus'
               tasks:
                 type: array
-                description: List of task statuses for the connector.
+                description: List of task status for the connector.
                 items:
-                  type: object
-                  description: Task status.
-                  properties:
-                    id:
-                      $ref: '#/components/schemas/TaskID'
-                    state:
-                      $ref: '#/components/schemas/State'
-                    trace:
-                      $ref: '#/components/schemas/TaskTrace'
-                    worker_id:
-                      $ref: '#/components/schemas/WorkerID'
+                  $ref: '#/components/schemas/TaskStatus'
     GetConnectorResponse:
       type: object
       description: Connector info.
@@ -577,27 +561,12 @@ components:
         name:
           $ref: '#/components/schemas/ConnectorName'
         connector:
-          type: object
-          description: Connector status.
-          properties:
-            state:
-              $ref: '#/components/schemas/State'
-            worker_id:
-              $ref: '#/components/schemas/WorkerID'
+          $ref: '#/components/schemas/ConnectorStatus'
         tasks:
           type: array
           description: List of task status for the connector.
           items:
-            type: object
-            properties:
-              id:
-                $ref: '#/components/schemas/TaskID'
-              trace:
-                $ref: '#/components/schemas/TaskTrace'
-              state:
-                $ref: '#/components/schemas/State'
-              worker_id:
-                $ref: '#/components/schemas/WorkerID'
+            $ref: '#/components/schemas/TaskStatus'
     GetConnectorConfigResponse:
       type: object
       description: Connector configuration.
@@ -632,31 +601,24 @@ components:
         name:
           $ref: '#/components/schemas/ConnectorName'
         connector:
-          type: object
-          description: Connector status.
-          properties:
-            state:
-              $ref: '#/components/schemas/State'
-            worker_id:
-              $ref: '#/components/schemas/WorkerID'
+          $ref: '#/components/schemas/ConnectorStatus'
         tasks:
           type: array
           description: List of task status for the connector.
           items:
-            type: object
-            properties:
-              id:
-                $ref: '#/components/schemas/TaskID'
-              trace:
-                $ref: '#/components/schemas/TaskTrace'
-              state:
-                $ref: '#/components/schemas/State'
-              worker_id:
-                $ref: '#/components/schemas/WorkerID'
+            $ref: '#/components/schemas/TaskStatus'
     ListConnectorTopicsResponse:
       type: object
       description: Connector topics fetched.
-      additionalProperties: true
+      additionalProperties:
+        type: object
+        description: Connector topics.
+        properties:
+          topics:
+            type: array
+            description: Connector topics.
+            items:
+              type: string
     ListConnectorTasksResponse:
       type: object
       description: Connector tasks fetched.
@@ -693,13 +655,38 @@ components:
     ConnectorName:
       type: string
       description: Name of the connector.
+    ConnectorStatus:
+      type: object
+      description: Connector status.
+      properties:
+        state:
+          $ref: '#/components/schemas/State'
+        worker_id:
+          $ref: '#/components/schemas/WorkerID'
     ConnectorType:
-        type: string
-        description: Type of connector.
-        enum: ["SINK", "SOURCE"]
+      type: string
+      description: Type of connector.
+      enum: ["SINK", "SOURCE"]
     TaskID:
       type: integer
       description: ID of the task.
+    TaskStatus:
+      type: object
+      description: Status of a task.
+      properties:
+        id:
+          $ref: '#/components/schemas/TaskID'
+        trace:
+          $ref: '#/components/schemas/TaskTrace'
+        state:
+          $ref: '#/components/schemas/State'
+        worker_id:
+          $ref: '#/components/schemas/WorkerID'
+    TaskStatuses:
+      type: array
+      description: List of task status for the connector.
+      items:
+        $ref: '#/components/schemas/TaskStatus'
     TaskTrace:
       type: string
       description: Stack trace information if the task has failed.
